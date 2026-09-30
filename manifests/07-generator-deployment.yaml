@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: generator
+  namespace: loadbalancer-k8s
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: generator
+  template:
+    metadata:
+      labels:
+        app: generator
+    spec:
+      serviceAccountName: generator-sa
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z postgres 5432; do echo esperando a postgres...; sleep 2; done
+      containers:
+        - name: generator
+          image: loadbalancer-k8s/generator:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9090
+          env:
+            - name: BACKEND_URL
+              value: http://backend:8081/process
+            - name: CONTROL_PORT
+              value: "9090"
+            - name: PROCESSING_MS
+              value: "700"
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: loadbalancer_db
+            - name: DB_SSLMODE
+              value: disable

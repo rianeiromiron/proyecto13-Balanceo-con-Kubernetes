@@ -1,0 +1,15 @@
+# Este Service ES el balanceador de carga del proyecto: kube-proxy reparte
+# las conexiones entrantes a backend:8081 entre los Pods con label
+# app=backend que estén Ready. Sin NGINX, sin Ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: loadbalancer-k8s
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8081
+      targetPort: 8081

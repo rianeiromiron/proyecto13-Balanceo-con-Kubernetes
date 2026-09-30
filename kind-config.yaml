@@ -1,0 +1,16 @@
+# Cluster de un solo nodo (control-plane sin workers), a propósito: el
+# StorageClass por defecto de Kind (local-path-provisioner) ata el volumen
+# al nodo donde primero corre el Pod, así que con más de un nodo el
+# scheduling del Deployment de Postgres podría fallar.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: canales-lb
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30543
+        hostPort: 5435
+        protocol: TCP
+      - containerPort: 30909
+        hostPort: 9091
+        protocol: TCP

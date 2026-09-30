@@ -1,0 +1,16 @@
+# Un único Service NodePort ya expone tanto el ClusterIP interno
+# (postgres:5432, usado por backend/generator) como el NodePort hacia el
+# host (localhost:5435 vía kind-config.yaml) - no hacen falta dos Services.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: loadbalancer-k8s
+spec:
+  type: NodePort
+  selector:
+    app: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+      nodePort: 30543

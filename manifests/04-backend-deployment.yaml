@@ -1,0 +1,61 @@
+# Sin SERVER_ID por réplica: cada Pod usa su propio hostname (= nombre del
+# Pod) como identidad. Por eso un solo Deployment con replicas:3 reemplaza
+# los 3 bloques backend1/backend2/backend3 de docker-compose.yml en proyecto12.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: loadbalancer-k8s
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      # Kubernetes no tiene un "depends_on" nativo como docker-compose: sin
+      # esto, el Pod podría arrancar antes que Postgres, fallar la conexión
+      # una sola vez (el binario no reintenta) y quedar sin tablas para siempre.
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - until nc -z postgres 5432; do echo esperando a postgres...; sleep 2; done
+      containers:
+        - name: backend
+          image: loadbalancer-k8s/backend:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          env:
+            - name: PROCESSING_MS
+              value: "700"
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+            - name: DB_NAME
+              value: loadbalancer_db
+            - name: DB_SSLMODE
+              value: disable
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
